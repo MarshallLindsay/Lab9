@@ -11,11 +11,9 @@ int main(){
 		cout<<test<<endl;
 	}
 
-	switch(test){
-		case 'g':
-			cout<<"win"<<endl;
-			break;
-		default:
-			break;
-	}
+	string newString;
+	
+	newString = new1;
+	
+	cout<<newString<<endl;
 }
