@@ -1,15 +1,28 @@
 /*
 	Marshall Lindsay
 	ECE 3220
-	Lab8
-	3/23/17
+	Lab9
+	4/18/17
 */
 
 
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stdio.h>
+#include <sys/mman.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <unistd.h>
 
+#define DOT 46 
+#define DASH 45 
+#define SPACE 32
+
+#define SETDOT 0x20 //0010 0000
+#define SETDASH 0x40 //0100 0000
+#define SETSPACE 0x80 //1000 0000 
 using namespace std;
 
 class Message{
@@ -68,6 +81,7 @@ class morseCodeMessage: public Message{
 		morseCodeMessage();
 		morseCodeMessage(string);
 		~morseCodeMessage();
+		void morseCodeToLights();
 		void translate(string);
 		void print();
 };
@@ -223,6 +237,27 @@ void morseCodeMessage::print(){
 	cout<< this->morseMsg <<endl;
 }
 
+void morseCodeMessage::morseCodeToLights(unsigned long* PBDR){
+
+	for(int i = 0; i < this->morseMsg.length(); i++){
+		//Clear all of the LEDs
+		PBDR &= 0x1F; //0001 1111
+		
+		character = this->morseMsg[i];
+		//Set the correct led
+		if(character = DOT){
+			PBDR |= SETDOT;
+		}else if(character = DASH){
+			PBDR |= SETDASH;
+		}else if(character = SPACE){
+			PBDR |= SETSPACE;
+		}
+		
+		//pause for 1 seccond
+		sleep(1);
+	}
+	
+}
 //-----------------------------------------------------------------
 //----------------------Generic Stack Class------------------------
 class messageStack{
@@ -270,6 +305,15 @@ void messageStack::printStack(){
 	
 }
 
+void messageStack::printLeds(unsigned long* PBDR){
+	morseCodeMessage* msgPtr = this -> top;
+	while(msgPtr != NULL){
+		msgPtr -> morseCodeToLights(PBDR);
+		msgPtr = msgPtr -> next;
+	}
+	
+}
+
 //Deletes the top object from the stack. Sets the top of the
 //stack to the next one down.
 void messageStack::pop(){
@@ -290,6 +334,33 @@ int main(int argc, char* argv[]){
 	
 	string userInput;
 	
+	int fd; //The file descriptor for the file we need to open
+	unsigned long *BasePtr; //Pointer to the begining of the memory page
+	unsigned long *PBDR, *PBDRR; //Pointers to the port be DR and DDR
+	
+	
+	fd = open("/dev/mem", O_RDWR|O_SYNC);	//Open the file
+	//Check that the file was opened
+	if(fd == -1){
+		cout<<"Error opening file"<<endl;
+		return(-1);
+	}
+	
+	//The process for mapping a memory page to the BasePtr.
+	BasePtr = (unsigned long*)mmap(NULL,getpagessize(),PROT_READ|PROT_WRITE,MAP_SHARED,FD,0x80840000);
+	
+	//Check that the mapping was successful
+	if(BasePtr == MAP_FAILED){
+		cout<<"Unable to map memory space<<endl;
+		return(-2);
+	}
+	
+	PBDR = BasePtr +1; //Address of PB DR is 0x080840004
+	PBDDR = BasePtr + 5; //Address of PB DDR is 0x080840014
+	
+	//Set the data direction. Green, Yellow and Red LEDs are output
+	PBDDR |= 0xE0; //1110 0000
+	
 	while(1){
 		optionMenu();
 		getline(cin, userInput);
@@ -300,6 +371,8 @@ int main(int argc, char* argv[]){
 		}else if(userInput == "3"){
 			stack.printStack();
 		}else if(userInput == "4"){
+			stack.printLeds(PBDR);
+		}else if(userInput == '5'){
 			return(0);
 		}else{
 			errorMessage();
@@ -312,7 +385,8 @@ void optionMenu(){
 	cout<<"1) Push message to the stack\n"
 		<<"2) Pop message off the stack\n"
 		<<"3) Print all messages on the stack\n"
-		<<"4) Quit"<<endl;
+		<<"4) Print the messages on the stack via LEDs\n"
+		<<"5) Quit"<<endl;
 }
 
 void errorMessage(){
