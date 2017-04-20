@@ -20,8 +20,8 @@
 #define DASH 45 
 #define SPACE 32
 
-#define SETDOT 0x20   //0010 0000
-#define SETDASH 0x40  //0100 0000
+#define SETDOT 0x20 //0010 0000
+#define SETDASH 0x40 //0100 0000
 #define SETSPACE 0x80 //1000 0000 
 using namespace std;
 
